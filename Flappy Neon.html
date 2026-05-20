@@ -1,0 +1,564 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <title>Ultimate Flappy Neon</title>
+
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        overflow: hidden;
+        font-family: Arial;
+        background: #70d6ff;
+      }
+
+      /* =========================
+GAME AREA
+========================= */
+
+      #game {
+        width: 100vw;
+        height: 100vh;
+        position: relative;
+        overflow: hidden;
+        background: linear-gradient(to bottom, #70d6ff, #d8f7ff);
+      }
+
+      /* =========================
+SUN
+========================= */
+
+      #sun {
+        position: absolute;
+        width: 180px;
+        height: 180px;
+        border-radius: 50%;
+        background: #ffd93d;
+        top: 40px;
+        right: 60px;
+
+        box-shadow:
+          0 0 50px #ffd93d,
+          0 0 100px #ffae00;
+      }
+
+      /* =========================
+GROUND
+========================= */
+
+      #ground {
+        position: absolute;
+        bottom: 0;
+        width: 300%;
+        height: 120px;
+
+        background: repeating-linear-gradient(
+          90deg,
+          #2ecc71 0px,
+          #2ecc71 40px,
+          #27ae60 40px,
+          #27ae60 80px
+        );
+
+        animation: groundMove 3s linear infinite;
+      }
+
+      @keyframes groundMove {
+        from {
+          transform: translateX(0);
+        }
+
+        to {
+          transform: translateX(-80px);
+        }
+      }
+
+      /* =========================
+BIRD
+========================= */
+
+      #bird {
+        width: 65px;
+        height: 50px;
+
+        position: absolute;
+        left: 120px;
+        top: 250px;
+
+        background: linear-gradient(45deg, #ffe600, #ff9500);
+
+        border-radius: 50% 50% 45% 45%;
+
+        box-shadow:
+          0 0 20px gold,
+          0 0 50px orange;
+
+        transition: 0.08s;
+      }
+
+      /* wing */
+
+      #bird::before {
+        content: "";
+
+        position: absolute;
+
+        width: 28px;
+        height: 20px;
+
+        background: #ffae00;
+
+        border-radius: 50%;
+
+        left: 12px;
+        top: 18px;
+
+        animation: wing 0.2s infinite alternate;
+      }
+
+      @keyframes wing {
+        from {
+          transform: rotate(0deg);
+        }
+
+        to {
+          transform: rotate(-25deg);
+        }
+      }
+
+      /* eye */
+
+      #bird::after {
+        content: "";
+
+        position: absolute;
+
+        width: 8px;
+        height: 8px;
+
+        background: black;
+
+        border-radius: 50%;
+
+        right: 12px;
+        top: 12px;
+      }
+
+      /* =========================
+PIPES
+========================= */
+
+      .pipe {
+        width: 90px;
+        position: absolute;
+
+        background: linear-gradient(to right, #00ff88, #00cc66);
+
+        border: 5px solid #00994d;
+
+        box-shadow: 0 0 20px #00ff88;
+      }
+
+      /* =========================
+SCORE
+========================= */
+
+      #score {
+        position: fixed;
+
+        top: 20px;
+        left: 50%;
+
+        transform: translateX(-50%);
+
+        color: white;
+
+        font-size: 80px;
+
+        font-weight: bold;
+
+        text-shadow: 0 0 10px black;
+
+        z-index: 100;
+      }
+
+      /* =========================
+START SCREEN
+========================= */
+
+      #menu {
+        position: fixed;
+        inset: 0;
+
+        background: rgba(0, 0, 0, 0.35);
+
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        flex-direction: column;
+
+        color: white;
+
+        z-index: 999;
+
+        backdrop-filter: blur(5px);
+      }
+
+      #menu h1 {
+        font-size: 80px;
+
+        text-shadow: 0 0 20px black;
+      }
+
+      #menu p {
+        margin-top: 15px;
+
+        font-size: 22px;
+
+        color: #eee;
+      }
+
+      button {
+        margin-top: 30px;
+
+        padding: 18px 40px;
+
+        border: none;
+
+        border-radius: 15px;
+
+        background: #ffe600;
+
+        font-size: 22px;
+
+        cursor: pointer;
+
+        font-weight: bold;
+
+        transition: 0.2s;
+      }
+
+      button:hover {
+        transform: scale(1.1);
+      }
+
+      /* =========================
+CLOUDS
+========================= */
+
+      .cloud {
+        position: absolute;
+
+        width: 180px;
+        height: 60px;
+
+        background: white;
+
+        border-radius: 100px;
+
+        opacity: 0.8;
+      }
+    </style>
+  </head>
+
+  <body>
+    <div id="game">
+      <div id="sun"></div>
+
+      <div id="score">0</div>
+
+      <div id="bird"></div>
+
+      <div id="ground"></div>
+
+      <div id="menu">
+        <h1>FLAPPY NEON</h1>
+
+        <p>🎮 SPACE / CLICK / TOUCH = FLY</p>
+
+        <button onclick="startGame()">START GAME</button>
+      </div>
+    </div>
+
+    <script>
+      /* =========================
+ELEMENTS
+========================= */
+
+      const bird = document.getElementById("bird");
+
+      const scoreText = document.getElementById("score");
+
+      const menu = document.getElementById("menu");
+
+      /* =========================
+GAME VARIABLES
+========================= */
+
+      let birdY = 250;
+
+      let velocity = 0;
+
+      let gravity = 0.45;
+
+      let gameStarted = false;
+
+      let gameOver = false;
+
+      let score = 0;
+
+      /* =========================
+BIRD PHYSICS
+========================= */
+
+      function updateBird() {
+        if (!gameStarted || gameOver) return;
+
+        velocity += gravity;
+
+        birdY += velocity;
+
+        bird.style.top = birdY + "px";
+
+        bird.style.transform = `rotate(${velocity * 4}deg)`;
+
+        /* ceiling */
+
+        if (birdY < 0) {
+          birdY = 0;
+
+          velocity = 0;
+        }
+
+        /* ground */
+
+        if (birdY > window.innerHeight - 170) {
+          endGame();
+        }
+
+        requestAnimationFrame(updateBird);
+      }
+
+      /* =========================
+FLAP
+========================= */
+
+      function flap() {
+        if (!gameStarted || gameOver) return;
+
+        velocity = -8;
+
+        bird.style.scale = "1.15";
+
+        setTimeout(() => {
+          bird.style.scale = "1";
+        }, 100);
+      }
+
+      /* keyboard */
+
+      document.addEventListener("keydown", (e) => {
+        if (e.code == "Space") {
+          flap();
+        }
+      });
+
+      /* mouse */
+
+      document.addEventListener("click", () => {
+        flap();
+      });
+
+      /* mobile touch */
+
+      document.addEventListener("touchstart", () => {
+        flap();
+      });
+
+      /* =========================
+PIPES
+========================= */
+
+      function createPipe() {
+        if (gameOver) return;
+
+        let gap = 190;
+
+        let topHeight = Math.random() * 250 + 80;
+
+        let bottomHeight = window.innerHeight - topHeight - gap - 120;
+
+        let x = window.innerWidth;
+
+        /* top */
+
+        const topPipe = document.createElement("div");
+
+        topPipe.classList.add("pipe");
+
+        topPipe.style.height = topHeight + "px";
+
+        topPipe.style.left = x + "px";
+
+        topPipe.style.top = "0";
+
+        document.body.appendChild(topPipe);
+
+        /* bottom */
+
+        const bottomPipe = document.createElement("div");
+
+        bottomPipe.classList.add("pipe");
+
+        bottomPipe.style.height = bottomHeight + "px";
+
+        bottomPipe.style.left = x + "px";
+
+        bottomPipe.style.bottom = "120px";
+
+        document.body.appendChild(bottomPipe);
+
+        let passed = false;
+
+        let speed = 5 + score * 0.1;
+
+        function movePipe() {
+          if (gameOver) return;
+
+          x -= speed;
+
+          topPipe.style.left = x + "px";
+
+          bottomPipe.style.left = x + "px";
+
+          const birdRect = bird.getBoundingClientRect();
+
+          const topRect = topPipe.getBoundingClientRect();
+
+          const bottomRect = bottomPipe.getBoundingClientRect();
+
+          /* collision */
+
+          if (
+            birdRect.left < topRect.right &&
+            birdRect.right > topRect.left &&
+            birdRect.top < topRect.bottom
+          ) {
+            endGame();
+          }
+
+          if (
+            birdRect.left < bottomRect.right &&
+            birdRect.right > bottomRect.left &&
+            birdRect.bottom > bottomRect.top
+          ) {
+            endGame();
+          }
+
+          /* score */
+
+          if (x < 120 && !passed) {
+            passed = true;
+
+            score++;
+
+            scoreText.innerHTML = score;
+          }
+
+          /* remove */
+
+          if (x < -100) {
+            topPipe.remove();
+
+            bottomPipe.remove();
+
+            return;
+          }
+
+          requestAnimationFrame(movePipe);
+        }
+
+        movePipe();
+      }
+
+      /* =========================
+START GAME
+========================= */
+
+      function startGame() {
+        gameStarted = true;
+
+        menu.style.display = "none";
+
+        updateBird();
+
+        setInterval(createPipe, 1700);
+      }
+
+      /* =========================
+END GAME
+========================= */
+
+      function endGame() {
+        gameOver = true;
+
+        menu.style.display = "flex";
+
+        menu.innerHTML = `
+
+  <h1>GAME OVER</h1>
+
+  <p>
+  🏆 SCORE : ${score}
+  </p>
+
+  <button onclick="location.reload()">
+  PLAY AGAIN
+  </button>
+
+  `;
+      }
+
+      /* =========================
+CLOUDS
+========================= */
+
+      for (let i = 0; i < 6; i++) {
+        const cloud = document.createElement("div");
+
+        cloud.classList.add("cloud");
+
+        cloud.style.top = Math.random() * 300 + "px";
+
+        cloud.style.left = Math.random() * window.innerWidth + "px";
+
+        document.body.appendChild(cloud);
+
+        let speed = Math.random() * 1 + 0.5;
+
+        function moveCloud() {
+          let left = parseFloat(cloud.style.left);
+
+          left -= speed;
+
+          if (left < -200) {
+            left = window.innerWidth;
+          }
+
+          cloud.style.left = left + "px";
+
+          requestAnimationFrame(moveCloud);
+        }
+
+        moveCloud();
+      }
+    </script>
+  </body>
+</html>
